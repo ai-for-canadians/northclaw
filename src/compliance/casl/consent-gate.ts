@@ -17,7 +17,7 @@ import { ConsentDB, ConsentRecord, ConsentCheckResult, Jurisdiction } from "./co
 
 // --- Message Classification ---
 
-interface OutboundMessage {
+export interface OutboundMessage {
   recipient: string;
   subject?: string;
   body: string;
