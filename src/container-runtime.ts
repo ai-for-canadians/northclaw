@@ -5,6 +5,7 @@
 import { execSync } from 'child_process';
 import fs from 'fs';
 import os from 'os';
+import path from 'path';
 
 import { logger } from './logger.js';
 
@@ -55,6 +56,21 @@ export function readonlyMountArgs(
   containerPath: string,
 ): string[] {
   return ['-v', `${hostPath}:${containerPath}:ro`];
+}
+
+/** CLI args for the NorthClaw seccomp profile (if present). */
+export function seccompArgs(): string[] {
+  const profilePath = path.join(process.cwd(), 'northclaw-seccomp.json');
+  if (!fs.existsSync(profilePath)) return [];
+  return ['--security-opt', `seccomp=${profilePath}`];
+}
+
+/** CLI args for read-only root filesystem with writable /tmp. */
+export function readOnlyRootArgs(): string[] {
+  return [
+    '--read-only',
+    '--tmpfs', '/tmp:rw,noexec,nosuid,size=512m',
+  ];
 }
 
 /** Returns the shell command to stop a container by name. */

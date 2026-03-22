@@ -22,7 +22,9 @@ import {
   CONTAINER_HOST_GATEWAY,
   CONTAINER_RUNTIME_BIN,
   hostGatewayArgs,
+  readOnlyRootArgs,
   readonlyMountArgs,
+  seccompArgs,
   stopContainer,
 } from './container-runtime.js';
 import { detectAuthMode } from './credential-proxy.js';
@@ -240,6 +242,10 @@ function buildContainerArgs(
 
   // Runtime-specific args for host gateway resolution
   args.push(...hostGatewayArgs());
+
+  // Container hardening: seccomp profile and read-only root filesystem
+  args.push(...seccompArgs());
+  args.push(...readOnlyRootArgs());
 
   // Run as host user so bind-mounted files are accessible.
   // Skip when running as root (uid 0), as the container's node user (uid 1000),
