@@ -1,0 +1,5 @@
+{
+  "consentMode": "log-only",
+  "_consentModeOptions": "log-only | strict",
+  "_comment": "Consent gate enforcement mode. 'log-only' logs what would be blocked but delivers. 'strict' blocks messages that fail consent checks."
+}
