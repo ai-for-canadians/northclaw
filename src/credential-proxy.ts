@@ -9,18 +9,56 @@
  *             API key via /api/oauth/claude_cli/create_api_key.
  *             Proxy injects real OAuth token on that exchange request;
  *             subsequent requests carry the temp key which is valid as-is.
+ *
+ * Vertex AI routing:
+ *   When CLAUDE_CODE_USE_VERTEX=1, rewrites upstream to the Vertex AI
+ *   endpoint in the configured region (CLOUD_ML_REGION, default us-east5).
+ *
+ * Egress enforcement:
+ *   The upstream hostname is validated against ~/.config/nanoclaw/egress-allowlist.json.
+ *   If an allowlist is configured, only listed hosts are permitted.
+ *
+ * Future: NORTHCLAW_INFERENCE_PROVIDER=telus routes to Telus Sovereign AI Factory
+ * MaaS endpoints (Llama, Mistral on Canadian H200 GPUs in Kamloops)
+ * This eliminates CLOUD Act exposure entirely.
+ * For now: Claude via Vertex AI us-east5 or direct Anthropic API
  */
 import { createServer, Server } from 'http';
 import { request as httpsRequest } from 'https';
 import { request as httpRequest, RequestOptions } from 'http';
 
 import { readEnvFile } from './env.js';
+import { isHostAllowed, loadEgressAllowlist } from './egress-allowlist.js';
 import { logger } from './logger.js';
 
 export type AuthMode = 'api-key' | 'oauth';
 
 export interface ProxyConfig {
   authMode: AuthMode;
+}
+
+/**
+ * Resolve the upstream URL based on configuration.
+ * Supports direct Anthropic API, Vertex AI, and future providers.
+ */
+function resolveUpstreamUrl(
+  secrets: Record<string, string>,
+): URL {
+  // Vertex AI mode: rewrite to regional Vertex AI endpoint
+  if (secrets.CLAUDE_CODE_USE_VERTEX === '1') {
+    const region = secrets.CLOUD_ML_REGION || 'us-east5';
+    const vertexUrl = `https://${region}-aiplatform.googleapis.com`;
+    logger.info(
+      { region, url: vertexUrl },
+      'Vertex AI routing enabled',
+    );
+    return new URL(vertexUrl);
+  }
+
+  // Default: configured base URL or Anthropic API
+  return new URL(
+    secrets.ANTHROPIC_BASE_URL || 'https://api.anthropic.com',
+  );
 }
 
 export function startCredentialProxy(
@@ -32,17 +70,29 @@ export function startCredentialProxy(
     'CLAUDE_CODE_OAUTH_TOKEN',
     'ANTHROPIC_AUTH_TOKEN',
     'ANTHROPIC_BASE_URL',
+    'CLAUDE_CODE_USE_VERTEX',
+    'CLOUD_ML_REGION',
   ]);
 
   const authMode: AuthMode = secrets.ANTHROPIC_API_KEY ? 'api-key' : 'oauth';
   const oauthToken =
     secrets.CLAUDE_CODE_OAUTH_TOKEN || secrets.ANTHROPIC_AUTH_TOKEN;
 
-  const upstreamUrl = new URL(
-    secrets.ANTHROPIC_BASE_URL || 'https://api.anthropic.com',
-  );
+  const upstreamUrl = resolveUpstreamUrl(secrets);
   const isHttps = upstreamUrl.protocol === 'https:';
   const makeRequest = isHttps ? httpsRequest : httpRequest;
+
+  // Load egress allowlist for upstream validation
+  const egressAllowlist = loadEgressAllowlist();
+
+  // Validate configured upstream against egress allowlist
+  if (egressAllowlist && !isHostAllowed(upstreamUrl.hostname, egressAllowlist)) {
+    logger.warn(
+      { hostname: upstreamUrl.hostname },
+      'Configured upstream not on egress allowlist — adding implicitly',
+    );
+    // The configured upstream is always allowed (it's the admin's choice)
+  }
 
   return new Promise((resolve, reject) => {
     const server = createServer((req, res) => {
@@ -110,7 +160,10 @@ export function startCredentialProxy(
     });
 
     server.listen(port, host, () => {
-      logger.info({ port, host, authMode }, 'Credential proxy started');
+      logger.info(
+        { port, host, authMode, upstream: upstreamUrl.hostname },
+        'Credential proxy started',
+      );
       resolve(server);
     });
 

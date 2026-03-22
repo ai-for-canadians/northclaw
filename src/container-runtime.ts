@@ -78,6 +78,58 @@ export function stopContainer(name: string): string {
   return `${CONTAINER_RUNTIME_BIN} stop -t 1 ${name}`;
 }
 
+/** The name of the internal Docker network used for default-deny egress. */
+const INTERNAL_NETWORK = 'northclaw-internal';
+
+/**
+ * Create the internal Docker network if it doesn't exist.
+ * The --internal flag blocks all outbound internet access.
+ * Containers can only reach the host (credential proxy) via
+ * host.docker.internal.
+ */
+export function ensureInternalNetwork(): void {
+  try {
+    const existing = execSync(
+      `${CONTAINER_RUNTIME_BIN} network ls --filter name=^${INTERNAL_NETWORK}$ --format '{{.Name}}'`,
+      { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf-8' },
+    ).trim();
+
+    if (existing === INTERNAL_NETWORK) {
+      logger.debug('Internal network already exists');
+      return;
+    }
+
+    execSync(
+      `${CONTAINER_RUNTIME_BIN} network create --internal ${INTERNAL_NETWORK}`,
+      { stdio: 'pipe' },
+    );
+    logger.info({ network: INTERNAL_NETWORK }, 'Created internal network');
+  } catch (err) {
+    logger.warn(
+      { err },
+      'Failed to create internal network, containers will use default networking',
+    );
+  }
+}
+
+/** CLI args to attach containers to the internal network. */
+export function networkArgs(): string[] {
+  try {
+    // Only use internal network if it exists
+    const existing = execSync(
+      `${CONTAINER_RUNTIME_BIN} network ls --filter name=^${INTERNAL_NETWORK}$ --format '{{.Name}}'`,
+      { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf-8' },
+    ).trim();
+
+    if (existing === INTERNAL_NETWORK) {
+      return ['--network', INTERNAL_NETWORK];
+    }
+  } catch {
+    // Fall through to empty args
+  }
+  return [];
+}
+
 /** Ensure the container runtime is running, starting it if needed. */
 export function ensureContainerRuntimeRunning(): void {
   try {
