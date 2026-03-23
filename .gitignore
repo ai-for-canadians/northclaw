@@ -36,3 +36,8 @@ groups/global/*
 .nanoclaw/
 
 agents-sdk-docs
+
+# Business-specific skills (local only, never pushed)
+.claude/skills/proposal/
+.claude/skills/value-report/
+.claude/skills/weekly/
