@@ -27,6 +27,7 @@ import {
   ensureInternalNetwork,
   PROXY_BIND_HOST,
 } from './container-runtime.js';
+import { logSecurityProfile } from './security/security-profiles.js';
 import {
   getAllChats,
   getAllRegisteredGroups,
@@ -471,6 +472,7 @@ function ensureContainerSystemRunning(): void {
   ensureContainerRuntimeRunning();
   ensureInternalNetwork();
   cleanupOrphans();
+  logSecurityProfile();
 }
 
 async function main(): Promise<void> {

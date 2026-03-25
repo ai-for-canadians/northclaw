@@ -22,12 +22,14 @@ import {
   CONTAINER_HOST_GATEWAY,
   CONTAINER_RUNTIME_BIN,
   hostGatewayArgs,
-  networkArgs,
   readOnlyRootArgs,
   readonlyMountArgs,
   seccompArgs,
   stopContainer,
 } from './container-runtime.js';
+import { profileNetworkArgs } from './security/security-profiles.js';
+import { knowledgeMountArgs } from './knowledge/knowledge-mount.js';
+import { pruneOutputs } from './core/file-output.js';
 import { detectAuthMode } from './credential-proxy.js';
 import { validateAdditionalMounts } from './mount-security.js';
 import { RegisteredGroup } from './types.js';
@@ -218,6 +220,7 @@ function buildVolumeMounts(
 function buildContainerArgs(
   mounts: VolumeMount[],
   containerName: string,
+  groupFolder: string,
 ): string[] {
   const args: string[] = ['run', '-i', '--rm', '--name', containerName];
 
@@ -247,7 +250,7 @@ function buildContainerArgs(
   // Container hardening: seccomp profile, read-only root, internal network
   args.push(...seccompArgs());
   args.push(...readOnlyRootArgs());
-  args.push(...networkArgs());
+  args.push(...profileNetworkArgs());
 
   // Run as host user so bind-mounted files are accessible.
   // Skip when running as root (uid 0), as the container's node user (uid 1000),
@@ -266,6 +269,12 @@ function buildContainerArgs(
       args.push('-v', `${mount.hostPath}:${mount.containerPath}`);
     }
   }
+
+  // Mount knowledge graph read-only (no-op if no graph file exists)
+  args.push(...knowledgeMountArgs());
+
+  // Pass group ID so the agent can include it in API request headers for cost tracking
+  args.push('-e', `NORTHCLAW_GROUP_ID=${groupFolder}`);
 
   args.push(CONTAINER_IMAGE);
 
@@ -286,7 +295,7 @@ export async function runContainerAgent(
   const mounts = buildVolumeMounts(group, input.isMain);
   const safeName = group.folder.replace(/[^a-zA-Z0-9-]/g, '-');
   const containerName = `nanoclaw-${safeName}-${Date.now()}`;
-  const containerArgs = buildContainerArgs(mounts, containerName);
+  const containerArgs = buildContainerArgs(mounts, containerName, group.folder);
 
   logger.debug(
     {
@@ -558,6 +567,20 @@ export async function runContainerAgent(
 
       fs.writeFileSync(logFile, logLines.join('\n'));
       logger.debug({ logFile, verbose: isVerbose }, 'Container log written');
+
+      // Extract output files from container before it's removed
+      try {
+        const groupOutputDir = path.join(resolveGroupFolderPath(group.folder), 'outputs');
+        exec(
+          `${CONTAINER_RUNTIME_BIN} cp ${containerName}:/tmp/outputs/. ${groupOutputDir}/`,
+          (err) => {
+            if (!err) {
+              logger.info({ group: group.name }, 'Extracted output files from container');
+              pruneOutputs(group.folder);
+            }
+          },
+        );
+      } catch { /* no outputs dir or container already removed */ }
 
       if (code !== 0) {
         logger.error(

@@ -7,6 +7,7 @@ dist/
 # Local data & auth
 store/
 data/
+!data/knowledge/.gitkeep
 logs/
 
 # Groups - only track base structure and specific CLAUDE.md files
@@ -36,6 +37,9 @@ groups/global/*
 .nanoclaw/
 
 agents-sdk-docs
+
+# Knowledge graph data (user-specific)
+data/knowledge/*.json
 
 # Business-specific skills (local only, never pushed)
 .claude/skills/proposal/

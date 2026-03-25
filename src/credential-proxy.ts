@@ -28,7 +28,8 @@ import { request as httpsRequest } from 'https';
 import { request as httpRequest, RequestOptions } from 'http';
 
 import { readEnvFile } from './env.js';
-import { isHostAllowed, loadEgressAllowlist } from './egress-allowlist.js';
+import { isHostAllowed, getEffectiveAllowlist } from './security/security-profiles.js';
+import { CostTracker } from './core/cost-tracker.js';
 import { logger } from './logger.js';
 
 export type AuthMode = 'api-key' | 'oauth';
@@ -82,17 +83,18 @@ export function startCredentialProxy(
   const isHttps = upstreamUrl.protocol === 'https:';
   const makeRequest = isHttps ? httpsRequest : httpRequest;
 
-  // Load egress allowlist for upstream validation
-  const egressAllowlist = loadEgressAllowlist();
-
-  // Validate configured upstream against egress allowlist
-  if (egressAllowlist && !isHostAllowed(upstreamUrl.hostname, egressAllowlist)) {
+  // Validate configured upstream against security profile allowlist
+  const effectiveAllowlist = getEffectiveAllowlist();
+  if (effectiveAllowlist.length > 0 && !isHostAllowed(upstreamUrl.hostname)) {
     logger.warn(
       { hostname: upstreamUrl.hostname },
       'Configured upstream not on egress allowlist — adding implicitly',
     );
     // The configured upstream is always allowed (it's the admin's choice)
   }
+
+  // Cost tracker for per-group token usage
+  const costTracker = new CostTracker();
 
   return new Promise((resolve, reject) => {
     const server = createServer((req, res) => {
@@ -139,7 +141,33 @@ export function startCredentialProxy(
           } as RequestOptions,
           (upRes) => {
             res.writeHead(upRes.statusCode!, upRes.headers);
-            upRes.pipe(res);
+
+            // Stream response while accumulating for cost tracking
+            let fullStream = '';
+            upRes.on('data', (chunk: Buffer) => {
+              res.write(chunk);
+              fullStream += chunk.toString();
+            });
+            upRes.on('end', () => {
+              res.end();
+
+              // Extract token usage from the last usage object in the stream
+              const groupId = (req.headers['x-northclaw-group'] as string) || 'global';
+              const matches = [...fullStream.matchAll(/"usage"\s*:\s*\{[^}]+\}/g)];
+              if (matches.length > 0) {
+                try {
+                  const usage = JSON.parse(`{${matches[matches.length - 1][0]}}`).usage;
+                  if (usage?.input_tokens && usage?.output_tokens) {
+                    costTracker.record(
+                      groupId,
+                      'claude-sonnet-4',
+                      usage.input_tokens,
+                      usage.output_tokens,
+                    );
+                  }
+                } catch { /* non-parseable usage data, skip */ }
+              }
+            });
           },
         );
 
