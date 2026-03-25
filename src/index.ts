@@ -4,6 +4,7 @@ import path from 'path';
 import {
   ASSISTANT_NAME,
   CREDENTIAL_PROXY_PORT,
+  GROUPS_DIR,
   IDLE_TIMEOUT,
   MAX_MESSAGES_PER_PROMPT,
   POLL_INTERVAL,
@@ -140,6 +141,26 @@ function registerGroup(jid: string, group: RegisteredGroup): void {
 
   // Create group folder
   fs.mkdirSync(path.join(groupDir, 'logs'), { recursive: true });
+
+  // Copy CLAUDE.md template into the new group folder so agents have
+  // identity and instructions from the first run.
+  const groupMdFile = path.join(groupDir, 'CLAUDE.md');
+  if (!fs.existsSync(groupMdFile)) {
+    const templateFile = path.join(
+      GROUPS_DIR,
+      group.isMain ? 'main' : 'global',
+      'CLAUDE.md',
+    );
+    if (fs.existsSync(templateFile)) {
+      let content = fs.readFileSync(templateFile, 'utf-8');
+      if (ASSISTANT_NAME !== 'Andy') {
+        content = content.replace(/^# Andy$/m, `# ${ASSISTANT_NAME}`);
+        content = content.replace(/You are Andy/g, `You are ${ASSISTANT_NAME}`);
+      }
+      fs.writeFileSync(groupMdFile, content);
+      logger.info({ folder: group.folder }, 'Created CLAUDE.md from template');
+    }
+  }
 
   logger.info(
     { jid, name: group.name, folder: group.folder },
