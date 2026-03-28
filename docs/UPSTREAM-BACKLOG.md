@@ -2,15 +2,6 @@
 
 Evaluated from upstream commits as of 2026-03-28. Cherry-pick when the timing is right.
 
-## Ready to adopt (low effort)
-
-### pino → built-in logger
-- **Upstream:** `7b22e23`
-- **What:** Replace pino + pino-pretty (23 transitive deps) with a ~70-line zero-dep logger. Same API.
-- **Effort:** Replace `src/logger.ts`, update 3 files that import pino directly (`mount-security.ts`, `setup/groups.ts`, `x-integration/host.ts`). Remove pino from package.json.
-- **Why do it:** Fewer supply chain risks, faster installs, aligns with upstream.
-- **Why wait:** Pure housekeeping. No functional impact.
-
 ## Evaluate later (medium effort)
 
 ### Task scripts for scheduled tasks
@@ -35,3 +26,5 @@ Evaluated from upstream commits as of 2026-03-28. Cherry-pick when the timing is
 | `c98205c` | Message history overflow (cap at 10 messages) | 2026-03-28 |
 | `0f01fe2` | Env parser single-char crash | 2026-03-28 |
 | `f537597` | IPC isMain preservation | 2026-03-28 |
+| `0240f48` | isMain template fix for runtime registration | 2026-03-28 |
+| `7b22e23` | pino → built-in logger (also removed yaml) | 2026-03-28 |
