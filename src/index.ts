@@ -24,8 +24,10 @@ import {
 import {
   cleanupOrphans,
   ensureContainerRuntimeRunning,
+  ensureInternalNetwork,
   PROXY_BIND_HOST,
 } from './container-runtime.js';
+import { logSecurityProfile } from './security/security-profiles.js';
 import {
   getAllChats,
   getAllRegisteredGroups,
@@ -59,6 +61,10 @@ import {
 import { startSchedulerLoop } from './task-scheduler.js';
 import { Channel, NewMessage, RegisteredGroup } from './types.js';
 import { logger } from './logger.js';
+import { AuditLogger } from './compliance/audit-logger.js';
+import { ConsentDB } from './compliance/casl/consent-db.js';
+import { ConsentGate } from './compliance/casl/consent-gate.js';
+import { initOutbound, sendOutbound } from './outbound.js';
 
 // Re-export for backwards compatibility during refactor
 export { escapeXml, formatMessages } from './router.js';
@@ -218,11 +224,9 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
         typeof result.result === 'string'
           ? result.result
           : JSON.stringify(result.result);
-      // Strip <internal>...</internal> blocks — agent uses these for internal reasoning
-      const text = raw.replace(/<internal>[\s\S]*?<\/internal>/g, '').trim();
       logger.info({ group: group.name }, `Agent output: ${raw.length} chars`);
-      if (text) {
-        await channel.sendMessage(chatJid, text);
+      if (raw.replace(/<internal>[\s\S]*?<\/internal>/g, '').trim()) {
+        await sendOutbound(chatJid, raw, 'agent', group.folder);
         outputSentToUser = true;
       }
       // Only reset idle timer on actual results, not session-update markers (result: null)
@@ -466,7 +470,9 @@ function recoverPendingMessages(): void {
 
 function ensureContainerSystemRunning(): void {
   ensureContainerRuntimeRunning();
+  ensureInternalNetwork();
   cleanupOrphans();
+  logSecurityProfile();
 }
 
 async function main(): Promise<void> {
@@ -508,9 +514,6 @@ async function main(): Promise<void> {
       return;
     }
 
-    const channel = findChannel(channels, chatJid);
-    if (!channel) return;
-
     if (command === '/remote-control') {
       const result = await startRemoteControl(
         msg.sender,
@@ -518,19 +521,26 @@ async function main(): Promise<void> {
         process.cwd(),
       );
       if (result.ok) {
-        await channel.sendMessage(chatJid, result.url);
+        await sendOutbound(chatJid, result.url, 'remote-control', group.folder);
       } else {
-        await channel.sendMessage(
+        await sendOutbound(
           chatJid,
           `Remote Control failed: ${result.error}`,
+          'remote-control',
+          group.folder,
         );
       }
     } else {
       const result = stopRemoteControl();
       if (result.ok) {
-        await channel.sendMessage(chatJid, 'Remote Control session ended.');
+        await sendOutbound(
+          chatJid,
+          'Remote Control session ended.',
+          'remote-control',
+          group.folder,
+        );
       } else {
-        await channel.sendMessage(chatJid, result.error);
+        await sendOutbound(chatJid, result.error, 'remote-control', group.folder);
       }
     }
   }
@@ -596,6 +606,13 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  // Initialize compliance layer (consent gate + audit logger)
+  const auditLogger = new AuditLogger();
+  const consentDb = new ConsentDB();
+  const consentGate = new ConsentGate(consentDb);
+  initOutbound(channels, consentGate, auditLogger);
+  logger.info('Compliance layer initialized');
+
   // Start subsystems (independently of connection handler)
   startSchedulerLoop({
     registeredGroups: () => registeredGroups,
@@ -604,20 +621,14 @@ async function main(): Promise<void> {
     onProcess: (groupJid, proc, containerName, groupFolder) =>
       queue.registerProcess(groupJid, proc, containerName, groupFolder),
     sendMessage: async (jid, rawText) => {
-      const channel = findChannel(channels, jid);
-      if (!channel) {
-        logger.warn({ jid }, 'No channel owns JID, cannot send message');
-        return;
-      }
-      const text = formatOutbound(rawText);
-      if (text) await channel.sendMessage(jid, text);
+      const group = registeredGroups[jid];
+      await sendOutbound(jid, rawText, 'scheduler', group?.folder || 'unknown');
     },
   });
   startIpcWatcher({
     sendMessage: (jid, text) => {
-      const channel = findChannel(channels, jid);
-      if (!channel) throw new Error(`No channel for JID: ${jid}`);
-      return channel.sendMessage(jid, text);
+      const group = registeredGroups[jid];
+      return sendOutbound(jid, text, 'ipc', group?.folder || 'unknown');
     },
     registeredGroups: () => registeredGroups,
     registerGroup,

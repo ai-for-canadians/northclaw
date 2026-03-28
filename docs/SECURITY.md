@@ -89,8 +89,8 @@ Real API credentials **never enter containers**. Instead, the host runs an HTTP 
 | Group folder | `/workspace/group` (rw) | `/workspace/group` (rw) |
 | Global memory | Implicit via project | `/workspace/global` (ro) |
 | Additional mounts | Configurable | Read-only unless allowed |
-| Network access | Unrestricted | Unrestricted |
-| MCP tools | All | All |
+| Network access | Internal only (proxy) | Internal only (proxy) |
+| MCP tools | All (via proxy) | All (via proxy) |
 
 ## Security Architecture Diagram
 
@@ -118,5 +118,38 @@ Real API credentials **never enter containers**. Instead, the host runs an HTTP 
 │  • File operations (limited to mounts)                            │
 │  • API calls routed through credential proxy                     │
 │  • No real credentials in environment or filesystem              │
+│  • Internal network: no direct internet access                  │
 └──────────────────────────────────────────────────────────────────┘
 ```
+
+### 6. Default-Deny Network Egress
+
+Containers run on the `northclaw-internal` Docker network (`--internal`):
+- **All outbound internet access is blocked** — containers cannot reach external services
+- The only reachable endpoint is the credential proxy via `host.docker.internal:3001`
+- The proxy enforces an egress allowlist (`~/.config/nanoclaw/egress-allowlist.json`) with wildcard support
+- Web search from agents is disabled by default. To enable, add domains to the egress allowlist.
+
+### 7. Seccomp Profile
+
+Container syscalls are restricted via `northclaw-seccomp.json`:
+- Default-deny policy with explicit allowlist
+- Permits Chromium-required syscalls (`clone`, `unshare`, `seccomp`)
+- Blocks dangerous syscalls: `mount`, `ptrace`, `kexec_load`, `pivot_root`, etc.
+- Uses `SCMP_ACT_ERRNO` (return EPERM) to avoid hard crashes
+
+### 8. Read-Only Root Filesystem
+
+Container root is mounted read-only (`--read-only`):
+- `/tmp` is writable via tmpfs (512MB, noexec, nosuid)
+- `/workspace` directories are writable via bind mounts
+- Prevents agents from modifying container system files
+
+### 9. CASL Consent Gate
+
+Every outbound message passes through a centralized consent gate (`src/outbound.ts`):
+- Runs on the host process — compromised agents cannot bypass it
+- Classifies messages as commercial or transactional
+- Applies CASL (Canadian) or CAN-SPAM (US) rules based on recipient jurisdiction
+- Supports `log-only` mode (default) or `strict` enforcement via `NORTHCLAW_CONSENT_MODE`
+- Hash-chained audit log at `data/audit/audit.jsonl` for tamper-evident trail

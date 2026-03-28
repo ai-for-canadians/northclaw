@@ -1,0 +1,7 @@
+{
+  "allowedUpstreams": [
+    "api.anthropic.com",
+    "*.aiplatform.googleapis.com"
+  ],
+  "_comment": "Hosts the credential proxy is allowed to forward to. Supports wildcards. Copy to ~/.config/nanoclaw/egress-allowlist.json"
+}
