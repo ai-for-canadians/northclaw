@@ -119,6 +119,16 @@ Skills we'd like to see:
 **Communication Channels**
 - `/add-signal` - Add Signal as a channel
 
+## Security Profiles
+
+NorthClaw uses three security profiles to control network egress:
+
+- **`locked`** — No internet access. Agents can only reach the AI inference endpoint. For regulated clients.
+- **`selective`** — Web access through the credential proxy with a domain allowlist. Default.
+- **`open`** — Full internet access. For development and testing only. All activity logged.
+
+Set `NORTHCLAW_SECURITY_PROFILE` in `.env`. Manage allowed domains with the `/egress` skill.
+
 ## Requirements
 
 - macOS or Linux

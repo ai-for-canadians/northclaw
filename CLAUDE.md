@@ -70,6 +70,18 @@ systemctl --user restart nanoclaw
 
 **WhatsApp not connecting after upgrade:** WhatsApp is now a separate skill, not bundled in core. Run `/add-whatsapp` (or `npx tsx scripts/apply-skill.ts .claude/skills/add-whatsapp && npm run build`) to install it. Existing auth credentials and groups are preserved.
 
+## Security Profiles
+
+Set via `NORTHCLAW_SECURITY_PROFILE` in `.env`:
+
+| Profile | Network | Web Access | Use Case |
+|---------|---------|------------|----------|
+| `locked` | Internal only | None (API endpoint only) | Regulated clients |
+| `selective` | Internal + proxy allowlist | Allowlisted domains | Default |
+| `open` | Full internet | Everything | Development/testing |
+
+Manage the egress allowlist with `/egress`. See `docs/SECURITY.md`.
+
 ## Container Build Cache
 
 The container buildkit caches the build context aggressively. `--no-cache` alone does NOT invalidate COPY steps — the builder's volume retains stale files. To force a truly clean rebuild, prune the builder then re-run `./container/build.sh`.

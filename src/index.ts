@@ -5,6 +5,7 @@ import {
   ASSISTANT_NAME,
   CREDENTIAL_PROXY_PORT,
   IDLE_TIMEOUT,
+  MAX_MESSAGES_PER_PROMPT,
   POLL_INTERVAL,
   TIMEZONE,
   TRIGGER_PATTERN,
@@ -24,13 +25,16 @@ import {
 import {
   cleanupOrphans,
   ensureContainerRuntimeRunning,
+  ensureInternalNetwork,
   PROXY_BIND_HOST,
 } from './container-runtime.js';
+import { logSecurityProfile } from './security/security-profiles.js';
 import {
   getAllChats,
   getAllRegisteredGroups,
   getAllSessions,
   getAllTasks,
+  getLastBotMessageTimestamp,
   getMessagesSince,
   getNewMessages,
   getRouterState,
@@ -59,6 +63,10 @@ import {
 import { startSchedulerLoop } from './task-scheduler.js';
 import { Channel, NewMessage, RegisteredGroup } from './types.js';
 import { logger } from './logger.js';
+import { AuditLogger } from './compliance/audit-logger.js';
+import { ConsentDB } from './compliance/casl/consent-db.js';
+import { ConsentGate } from './compliance/casl/consent-gate.js';
+import { initOutbound, sendOutbound } from './outbound.js';
 
 // Re-export for backwards compatibility during refactor
 export { escapeXml, formatMessages } from './router.js';
@@ -87,6 +95,27 @@ function loadState(): void {
     { groupCount: Object.keys(registeredGroups).length },
     'State loaded',
   );
+}
+
+/**
+ * Return the message cursor for a group, recovering from the last bot reply
+ * if lastAgentTimestamp is missing (new group, corrupted state, restart).
+ */
+function getOrRecoverCursor(chatJid: string): string {
+  const existing = lastAgentTimestamp[chatJid];
+  if (existing) return existing;
+
+  const botTs = getLastBotMessageTimestamp(chatJid, ASSISTANT_NAME);
+  if (botTs) {
+    logger.info(
+      { chatJid, recoveredFrom: botTs },
+      'Recovered message cursor from last bot reply',
+    );
+    lastAgentTimestamp[chatJid] = botTs;
+    saveState();
+    return botTs;
+  }
+  return '';
 }
 
 function saveState(): void {
@@ -159,11 +188,11 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
 
   const isMainGroup = group.isMain === true;
 
-  const sinceTimestamp = lastAgentTimestamp[chatJid] || '';
   const missedMessages = getMessagesSince(
     chatJid,
-    sinceTimestamp,
+    getOrRecoverCursor(chatJid),
     ASSISTANT_NAME,
+    MAX_MESSAGES_PER_PROMPT,
   );
 
   if (missedMessages.length === 0) return true;
@@ -218,11 +247,9 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
         typeof result.result === 'string'
           ? result.result
           : JSON.stringify(result.result);
-      // Strip <internal>...</internal> blocks — agent uses these for internal reasoning
-      const text = raw.replace(/<internal>[\s\S]*?<\/internal>/g, '').trim();
       logger.info({ group: group.name }, `Agent output: ${raw.length} chars`);
-      if (text) {
-        await channel.sendMessage(chatJid, text);
+      if (raw.replace(/<internal>[\s\S]*?<\/internal>/g, '').trim()) {
+        await sendOutbound(chatJid, raw, 'agent', group.folder);
         outputSentToUser = true;
       }
       // Only reset idle timer on actual results, not session-update markers (result: null)
@@ -412,8 +439,9 @@ async function startMessageLoop(): Promise<void> {
           // context that accumulated between triggers is included.
           const allPending = getMessagesSince(
             chatJid,
-            lastAgentTimestamp[chatJid] || '',
+            getOrRecoverCursor(chatJid),
             ASSISTANT_NAME,
+            MAX_MESSAGES_PER_PROMPT,
           );
           const messagesToSend =
             allPending.length > 0 ? allPending : groupMessages;
@@ -452,8 +480,12 @@ async function startMessageLoop(): Promise<void> {
  */
 function recoverPendingMessages(): void {
   for (const [chatJid, group] of Object.entries(registeredGroups)) {
-    const sinceTimestamp = lastAgentTimestamp[chatJid] || '';
-    const pending = getMessagesSince(chatJid, sinceTimestamp, ASSISTANT_NAME);
+    const pending = getMessagesSince(
+      chatJid,
+      getOrRecoverCursor(chatJid),
+      ASSISTANT_NAME,
+      MAX_MESSAGES_PER_PROMPT,
+    );
     if (pending.length > 0) {
       logger.info(
         { group: group.name, pendingCount: pending.length },
@@ -466,7 +498,9 @@ function recoverPendingMessages(): void {
 
 function ensureContainerSystemRunning(): void {
   ensureContainerRuntimeRunning();
+  ensureInternalNetwork();
   cleanupOrphans();
+  logSecurityProfile();
 }
 
 async function main(): Promise<void> {
@@ -508,9 +542,6 @@ async function main(): Promise<void> {
       return;
     }
 
-    const channel = findChannel(channels, chatJid);
-    if (!channel) return;
-
     if (command === '/remote-control') {
       const result = await startRemoteControl(
         msg.sender,
@@ -518,19 +549,26 @@ async function main(): Promise<void> {
         process.cwd(),
       );
       if (result.ok) {
-        await channel.sendMessage(chatJid, result.url);
+        await sendOutbound(chatJid, result.url, 'remote-control', group.folder);
       } else {
-        await channel.sendMessage(
+        await sendOutbound(
           chatJid,
           `Remote Control failed: ${result.error}`,
+          'remote-control',
+          group.folder,
         );
       }
     } else {
       const result = stopRemoteControl();
       if (result.ok) {
-        await channel.sendMessage(chatJid, 'Remote Control session ended.');
+        await sendOutbound(
+          chatJid,
+          'Remote Control session ended.',
+          'remote-control',
+          group.folder,
+        );
       } else {
-        await channel.sendMessage(chatJid, result.error);
+        await sendOutbound(chatJid, result.error, 'remote-control', group.folder);
       }
     }
   }
@@ -596,6 +634,13 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  // Initialize compliance layer (consent gate + audit logger)
+  const auditLogger = new AuditLogger();
+  const consentDb = new ConsentDB();
+  const consentGate = new ConsentGate(consentDb);
+  initOutbound(channels, consentGate, auditLogger);
+  logger.info('Compliance layer initialized');
+
   // Start subsystems (independently of connection handler)
   startSchedulerLoop({
     registeredGroups: () => registeredGroups,
@@ -604,20 +649,14 @@ async function main(): Promise<void> {
     onProcess: (groupJid, proc, containerName, groupFolder) =>
       queue.registerProcess(groupJid, proc, containerName, groupFolder),
     sendMessage: async (jid, rawText) => {
-      const channel = findChannel(channels, jid);
-      if (!channel) {
-        logger.warn({ jid }, 'No channel owns JID, cannot send message');
-        return;
-      }
-      const text = formatOutbound(rawText);
-      if (text) await channel.sendMessage(jid, text);
+      const group = registeredGroups[jid];
+      await sendOutbound(jid, rawText, 'scheduler', group?.folder || 'unknown');
     },
   });
   startIpcWatcher({
     sendMessage: (jid, text) => {
-      const channel = findChannel(channels, jid);
-      if (!channel) throw new Error(`No channel for JID: ${jid}`);
-      return channel.sendMessage(jid, text);
+      const group = registeredGroups[jid];
+      return sendOutbound(jid, text, 'ipc', group?.folder || 'unknown');
     },
     registeredGroups: () => registeredGroups,
     registerGroup,
