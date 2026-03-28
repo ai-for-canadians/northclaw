@@ -7,11 +7,11 @@ When the user wants to debrief after a meeting, process a transcript, or extract
 - "debrief that call"
 - "what came out of that meeting"
 - "process the transcript"
-- "pull the Granola notes from [meeting]"
+- "pull the your meeting transcript tool notes from [meeting]"
 
 ## What to do
 
-1. Find the meeting. Check Granola for the most recent meeting, or search by name/org if specified. Pull the full transcript.
+1. Find the meeting. Check your meeting transcript tool for the most recent meeting, or search by name/org if specified. Pull the full transcript.
 
 2. Extract and organize:
 

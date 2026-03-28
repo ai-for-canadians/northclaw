@@ -13,7 +13,7 @@ Extract ONLY facts that would be useful in a future conversation:
 - Commitments ("Will send proposal by Friday", "Follow-up scheduled for April 3")
 - Preferences learned ("Prefers PDF over docx", "Morning meetings only")
 - Key numbers ("Team size: 14", "Annual revenue: $2.3M", "Contract value: $8K")
-- Relationship context ("Met through DMZ", "Reports to Sarah", "Skeptical of AI")
+- Relationship context ("Met through [referral source]", "Reports to Sarah", "Skeptical of AI")
 - Status changes ("Moved from prospect to active client", "Proposal accepted")
 
 ## What NOT to remember

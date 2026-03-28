@@ -12,7 +12,7 @@ When the user wants to create a new skill for NorthClaw, use this template.
 1. Ask the user:
    - What should this skill do? (one sentence)
    - What triggers it? (command name and natural language phrases)
-   - What data sources does it need? (Granola, knowledge graph, web, files)
+   - What data sources does it need? (meeting transcripts, knowledge graph, web, files)
    - Who sees the output? (internal only, or client-facing?)
 
 2. Create a new folder at `.claude/skills/[skill-name]/SKILL.md` using this structure:
@@ -48,7 +48,7 @@ When the user wants to create a new skill for NorthClaw, use this template.
 ## Rules for all skills
 - Skills are SKILL.md instruction files, not code PRs to the core
 - One skill per folder in .claude/skills/
-- Skills can reference project knowledge, Granola, web search, and the knowledge graph
+- Skills can reference project knowledge, meeting transcripts, web search, and the knowledge graph
 - Client-facing output follows system defaults (voice, banned words, simplify pass)
 - Internal output can be rough
 - Never reveal methodology or framework names in client-facing skill output

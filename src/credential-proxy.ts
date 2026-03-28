@@ -18,8 +18,8 @@
  *   The upstream hostname is validated against ~/.config/nanoclaw/egress-allowlist.json.
  *   If an allowlist is configured, only listed hosts are permitted.
  *
- * Future: NORTHCLAW_INFERENCE_PROVIDER=telus routes to Telus Sovereign AI Factory
- * MaaS endpoints (Llama, Mistral on Canadian H200 GPUs in Kamloops)
+ * Future: NORTHCLAW_INFERENCE_PROVIDER=sovereign routes to a Canadian sovereign
+ * AI compute provider with open-weight models (Llama, Mistral on Canadian GPUs).
  * This eliminates CLOUD Act exposure entirely.
  * For now: Claude via Vertex AI us-east5 or direct Anthropic API
  */

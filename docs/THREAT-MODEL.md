@@ -64,6 +64,6 @@
 - Egress allowlist controls which endpoints receive data
 
 **Roadmap:**
-- Telus Sovereign AI Factory (Kamloops) with Llama/Mistral on Canadian H200 GPUs
-- Open-weight models on Canadian sovereign compute (ThinkOn, Micro Logic)
+- Canadian sovereign AI compute with open-weight models (Llama, Mistral) on Canadian GPUs
+- Full data sovereignty with no US jurisdiction exposure
 - See `docs/VERTEX-AI.md` for details

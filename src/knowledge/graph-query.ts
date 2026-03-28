@@ -1,7 +1,7 @@
 /**
  * NorthClaw Knowledge Graph Access
  *
- * Loads the AIFC knowledge graph and provides query functions
+ * Loads the knowledge graph and provides query functions
  * that agents can use inside containers. The graph file is
  * mounted read-only into containers that need client context.
  *
@@ -41,8 +41,8 @@ interface KnowledgeGraph {
 }
 
 const GRAPH_PATHS = [
-  "data/knowledge/aifc_knowledge_graph_v2.json",
-  "data/knowledge/aifc_knowledge_graph_v1.json",
+  "data/knowledge/knowledge_graph_v2.json",
+  "data/knowledge/knowledge_graph_v1.json",
 ];
 
 let _graph: KnowledgeGraph | null = null;

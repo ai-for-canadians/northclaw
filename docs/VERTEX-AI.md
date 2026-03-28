@@ -42,12 +42,11 @@ US-hosted inference providers (including Vertex AI us-east5) are subject to the 
 - One-line configuration change: `CLOUD_ML_REGION=northamerica-northeast1`
 
 **Medium-term:**
-- **Telus Sovereign AI Factory** (Kamloops, BC) — `NORTHCLAW_INFERENCE_PROVIDER=telus`
-- MaaS endpoints with Llama, Mistral on Canadian H200 GPUs
+- **Canadian sovereign AI compute** — `NORTHCLAW_INFERENCE_PROVIDER=sovereign`
+- MaaS endpoints with open-weight models (Llama, Mistral) on Canadian GPUs
 - Eliminates CLOUD Act exposure entirely
 - Architecture is ready: credential proxy supports provider switching
 
 **Long-term:**
-- Open-weight models on Canadian sovereign compute
-- ThinkOn (Ontario) and Micro Logic (Quebec) data centers
+- Open-weight models on Canadian sovereign compute infrastructure
 - Full data sovereignty with no US jurisdiction exposure

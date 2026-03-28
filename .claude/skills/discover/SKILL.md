@@ -12,9 +12,9 @@ Pre-meeting intelligence gathering for upcoming calls with prospects, partners, 
 
 1. Check internal sources first:
    - Knowledge graph: existing nodes, relationship history, pipeline status, pain points
-   - Granola: past meeting transcripts with this person/org
+   - your meeting transcript tool: past meeting transcripts with this person/org
    - Past conversations: any prior context or decisions
-   - LinkedIn CSV: connection status, mutual connections, their role/company
+   - contact database: connection status, mutual connections, their role/company
 
 2. Check external sources:
    - Web search: recent news, leadership changes, funding, press releases
@@ -42,7 +42,7 @@ Pre-meeting intelligence gathering for upcoming calls with prospects, partners, 
 - Listen for: [Buying signals or objections to expect]
 
 **Relevant proof points:**
-- [Which AIFC proof points match their sector/size]
+- [Which of your proof points match their sector/size]
 
 **Watch out for:**
 - [Any risks, sensitive topics, or things to avoid based on prior context]

@@ -12,9 +12,9 @@ When the user asks for a pipeline review, status update, daily briefing, or asks
 
 ## What to do
 
-1. Check Granola for meetings in the last 7 days. Extract any commitments, follow-ups, or next steps mentioned.
+1. Check your meeting transcript tool for meetings in the last 7 days. Extract any commitments, follow-ups, or next steps mentioned.
 
-2. Check the knowledge graph (aifc_knowledge_graph_v2.json in project knowledge) for:
+2. Check the knowledge graph (knowledge_graph.json in project knowledge) for:
    - Active clients and last contact dates
    - Pipeline prospects and their stages
    - Any follow_up_status marked as OVERDUE

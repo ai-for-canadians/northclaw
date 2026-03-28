@@ -9,8 +9,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 const GRAPH_PATHS = [
-  "data/knowledge/aifc_knowledge_graph_v2.json",
-  "data/knowledge/aifc_knowledge_graph_v1.json",
+  "data/knowledge/knowledge_graph_v2.json",
+  "data/knowledge/knowledge_graph_v1.json",
 ];
 
 /**
