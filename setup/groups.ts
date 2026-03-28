@@ -112,12 +112,13 @@ async function syncGroups(projectRoot: string): Promise<void> {
   try {
     const syncScript = `
 import makeWASocket, { useMultiFileAuthState, makeCacheableSignalKeyStore, Browsers } from '@whiskeysockets/baileys';
-import pino from 'pino';
 import path from 'path';
 import fs from 'fs';
 import Database from 'better-sqlite3';
 
-const logger = pino({ level: 'silent' });
+// Minimal no-op logger to satisfy Baileys constructor (pino API shape)
+const noop = () => {};
+const logger = Object.assign(noop, { child: () => logger, info: noop, warn: noop, error: noop, debug: noop, trace: noop, fatal: noop, level: 'silent' });
 const authDir = path.join('store', 'auth');
 const dbPath = path.join('store', 'messages.db');
 
