@@ -25,7 +25,7 @@ npx tsx src/cli/egress-cli.ts --test us-east5-aiplatform.googleapis.com
 
 NorthClaw containers run on an internal Docker network with no internet access. All API calls go through the credential proxy, which only forwards to hosts on the egress allowlist.
 
-The allowlist lives at `~/.config/nanoclaw/egress-allowlist.json` — outside the project root so containers cannot read or modify it.
+The allowlist lives at `~/.config/northclaw/egress-allowlist.json` — outside the project root so containers cannot read or modify it.
 
 Default entries:
 - `api.anthropic.com` — direct Anthropic API
@@ -33,4 +33,4 @@ Default entries:
 
 Wildcard patterns match subdomains: `*.googleapis.com` matches `us-east5-aiplatform.googleapis.com`.
 
-After modifying the allowlist, restart NanoClaw for changes to take effect (the proxy caches the allowlist at startup).
+After modifying the allowlist, restart NorthClaw for changes to take effect (the proxy caches the allowlist at startup).
