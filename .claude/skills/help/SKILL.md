@@ -11,20 +11,40 @@ Show available NorthClaw commands when a user asks what the system can do.
 
 ## Response format
 
-Respond with this exact list, formatted cleanly:
+Respond with this list, formatted cleanly:
 
 **NorthClaw Commands**
 
+**Compliance**
+🔒 `/pia` — Privacy Impact Assessment. Structured questionnaire, risk scoring, audit-ready output.
+📋 `/dsar` — Data Subject Access Request. Triage, jurisdiction detection, deadline tracking, response templates.
+📡 `/reg-monitor` — Regulatory change monitor. Recent privacy law changes, gap analysis, action items.
+🚨 `/breach` — Breach notification coordinator. Incident assessment, jurisdiction deadlines, draft notifications.
+🔍 `/pii-scan` — PII detection and redaction. Scan documents, classify findings, offer redaction.
+📄 `/contract-review` — Contract clause review. Data protection terms, redline suggestions, regulatory mapping.
+🏢 `/vendor-risk` — Vendor risk assessment. Security posture scoring, framework mapping, board-ready report.
+🤖 `/ai-governance` — AI Act compliance. System classification, conformity docs, governance reporting.
+🔔 `/whistleblower` — Whistleblower report triage. Anonymity protection, jurisdiction deadlines, investigation plan.
+📤 `/consent-export` — Export consent records for regulatory requests.
+
+**Developer Tools**
+🛡️ `/code-review` — Compliance-aware security review. Vulnerability detection, framework mapping, remediation code.
+📦 `/sbom` — Software Bill of Materials. Dependencies, vulnerabilities, license conflicts.
+🔑 `/secrets-scan` — Scan files and git history for leaked credentials. Rotation procedures.
+🏗️ `/iac-scan` — Infrastructure-as-Code scanner. CIS benchmarks, PCI DSS, HIPAA, SOC 2 checks.
+
+**Business**
 📋 `/pipeline` — Morning briefing. Overdue follow-ups, today's meetings, stale contacts.
-🎙️ `/debrief` — Process a meeting. Pulls transcript, extracts decisions and next steps.
-🔍 `/discover [person or org]` — Pre-meeting research. Pulls context from everywhere.
-📊 `/value-report [client]` — Monthly value report using the 5-layer model.
+🎙️ `/debrief` — Process a meeting. Extract decisions, commitments, next steps.
+🔍 `/discover [person]` — Pre-meeting research from all available sources.
 📝 `/proposal [prospect]` — Draft a proposal with value-based pricing.
+📊 `/value-report [client]` — Monthly value report using the 5-layer model.
 📅 `/weekly` — Monday review. Revenue, pipeline, decisions, priorities.
-🔒 `/egress add [domain]` — Allow a website through the network filter.
-📤 `/consent-export --recipient [email]` — Export consent records for regulatory requests.
-🔧 `/new-skill [name]` — Create a new custom skill.
+
+**System**
 📈 `/status` — System health. Active containers, costs, security profile.
+🔒 `/egress add [domain]` — Allow a website through the network filter.
+🔧 `/new-skill [name]` — Create a new custom skill.
 🎯 `/demo` — Guided 5-minute walkthrough of NorthClaw capabilities.
 ❓ `/help` — This list.
 
