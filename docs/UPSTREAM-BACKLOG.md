@@ -1,4 +1,4 @@
-# Upstream NanoClaw Features — Backlog
+# Upstream NanoClaw Features — NorthClaw Backlog
 
 Evaluated from upstream commits as of 2026-03-28. Cherry-pick when the timing is right.
 

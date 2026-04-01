@@ -1,4 +1,4 @@
-# NanoClaw Security Model
+# NorthClaw Security Model
 
 ## Trust Model
 

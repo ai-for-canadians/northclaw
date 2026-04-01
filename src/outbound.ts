@@ -1,7 +1,7 @@
 /**
  * Centralized outbound message path.
  *
- * Every outbound message in NanoClaw passes through this module.
+ * Every outbound message in NorthClaw passes through this module.
  * It applies CASL consent checks, audit logging, and message formatting
  * before delivering via the appropriate channel.
  *
@@ -55,7 +55,7 @@ export type OutboundSource =
 /**
  * Send an outbound message through the consent gate and audit logger.
  *
- * All outbound paths in NanoClaw must call this function instead of
+ * All outbound paths must call this function instead of
  * channel.sendMessage() directly.
  */
 export async function sendOutbound(
@@ -120,7 +120,7 @@ export async function sendOutbound(
 }
 
 /**
- * Map NanoClaw channel name to consent gate channel type.
+ * Map channel name to consent gate channel type.
  */
 function detectChannelType(
   channelName: string,
