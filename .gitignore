@@ -3,6 +3,7 @@ node_modules/
 .npm-cache/
 # Build output
 dist/
+src/dashboard/ui/dist/
 
 # Local data & auth
 store/
